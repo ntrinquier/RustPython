@@ -8,6 +8,8 @@ use crate::vm::VirtualMachine;
 use super::objfloat::{self, PyFloat};
 use super::objint;
 use super::objtype::{self, PyClassRef};
+use crate::obj::objint::PyInt;
+use crate::obj::objfloat::PyFloatRef;
 
 #[pyclass(name = "complex")]
 #[derive(Debug, Copy, Clone, PartialEq)]
@@ -161,15 +163,25 @@ impl PyComplex {
         vm.ctx.new_bool(result)
     }
 
+    #[pymethod(name = "__float__")]
+    fn float(self, vm: &VirtualMachine) -> PyFloat {
+        return vm.new_type_error(String::from("Can't convert complex to float"));
+    }
+
+    #[pymethod(name = "__int__")]
+    fn int(self, vm: &VirtualMachine) -> PyInt {
+        return vm.new_type_error(String::from("Can't convert complex to int"));
+    }
+
     #[pymethod(name = "__mul__")]
-    fn mul(self, other: PyObjectRef, vm: &VirtualMachine) -> PyObjectRef {
+    fn mul(self, other: PyObjectRef, vm: &VirtualMachine) -> PyComplex {
         match to_complex(other, vm) {
-            Ok(Some(other)) => Ok(vm.ctx.new_complex(Complex64::new(
+            Ok(Some(other)) => vm.ctx.new_complex(Complex64::new(
                 self.value.re * other.re - self.value.im * other.im,
                 self.value.re * other.im + self.value.re * other.im,
-            ))),
-            Ok(None) => Ok(vm.ctx.not_implemented()),
-            Err(err) => Err(err),
+            )),
+            Ok(None) => vm.ctx.not_implemented(),
+            Err(err) => vm.ctx.exceptions.runtime_error.clone(),
         }
     }
 
